@@ -7,11 +7,13 @@ Welcome to MPRACollection's documentation!
 
    readme
    installation
+   tutorial
    usage
    modules
    contributing
    authors
    history
+   tutorial/notebook/test_load_data
 
 Indices and tables
 ==================
