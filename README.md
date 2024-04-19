@@ -4,7 +4,7 @@
 
 [![build status](https://img.shields.io/travis/simon1727/MPRACollection.svg)](https://travis-ci.com/simon1727/MPRACollection)
 
-[![Documentation Status](https://readthedocs.org/projects/MPRACollection/badge/?version=latest)](https://MPRACollection.readthedocs.io/en/latest/?version=latest)
+[![Documentation Status](https://readthedocs.org/projects/mpracollection/badge/?version=latest)](https://mpracollection.readthedocs.io/en/latest/?badge=latest)
 
 Python Boilerplate contains all the boilerplate you need to create a Python package.
 
