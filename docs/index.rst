@@ -13,7 +13,6 @@ Welcome to MPRACollection's documentation!
    contributing
    authors
    history
-   tutorial/notebook/test_load_data
 
 Indices and tables
 ==================
