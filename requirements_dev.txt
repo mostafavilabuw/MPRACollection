@@ -4,8 +4,13 @@ wheel==0.33.6
 watchdog==0.9.0
 tox==3.14.0
 coverage==4.5.4
-Sphinx==7.2.6
+Sphinx==
 twine==5.0.0
 ruff==0.3.5
-
 pytest==6.2.4
+furo
+myst-parser
+pyyaml
+pandas
+numpy
+torch
