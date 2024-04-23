@@ -7,7 +7,7 @@ Welcome to MPRACollection's documentation!
 
    readme
    installation
-   tutorial
+   tutorial/index
    usage
    modules
    contributing
