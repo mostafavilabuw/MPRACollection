@@ -167,7 +167,7 @@ class MPRA_Dataset:
     def __getitem__(self, index):
         # Check if index is a simple type (int, str, slice) or a pandas compatible index (list, Series, array)
         if isinstance(
-            index, (int, str, slice, list, pd.Series, np.ndarray, torch.Tensor)
+            index, (int, str, slice, list, pd.Series, pd.Index, np.ndarray, torch.Tensor)
         ):
             # Normalize torch.Tensor to list
             if isinstance(index, torch.Tensor):
