@@ -6,7 +6,7 @@
 
 [![Documentation Status](https://readthedocs.org/projects/mpracollection/badge/?version=latest)](https://mpracollection.readthedocs.io/en/latest/?badge=latest)
 
-Python Boilerplate contains all the boilerplate you need to create a Python package.
+MPRACollection is a Python package designed to facilitate access and utilization of publicly available MPRA (Massively Parallel Reporter Assays) datasets. By standardizing these datasets into a consistent format, our package ensures streamlined integration and enhanced usability for the research community. Additionally, MPRACollection supports integration with PyTorch, providing DataLoader and Dataset classes that enable machine learning practitioners to effortlessly apply these data in model training and evaluation processes.
 
 - Free software: MIT license
 - Documentation: https://MPRACollection.readthedocs.io.
