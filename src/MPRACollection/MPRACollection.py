@@ -16,6 +16,22 @@ __PATH__ = "/data/tuxm/project/MPRA-collection/data/mpra_test/"
 
 class MPRA_Dataset:
 
+    @staticmethod
+    def list_papers(folder=__PATH__):
+        return os.listdir(folder)
+
+    @staticmethod
+    def list_datasets(name_paper, folder=__PATH__):
+        return [name[:-4] for name in os.listdir(os.path.join(folder, name_paper)) if '.csv' in name]
+
+    @staticmethod
+    def print_all(folder=__PATH__):
+        for name_paper in MPRA_Dataset.list_papers(folder):
+            print(f'==== {name_paper} ====')
+            for name_dataset in MPRA_Dataset.list_datasets(name_paper, folder):
+                print(f'  ==== {name_dataset}')
+        print(f'==== ==== ==== ====')
+
     def __init__(
         self,
         folder=__PATH__,
@@ -56,6 +72,7 @@ class MPRA_Dataset:
             )
         elif Z:
             for name in Z.keys():
+                # (name, Z[name].shape[0], self.n_seq)
                 assert Z[name].shape[0] == self.n_seq
             self.Z = Z
         elif names_Z:
@@ -76,12 +93,28 @@ class MPRA_Dataset:
         return self.X.shape[0]
 
     @property
+    def len_seq(self):
+        return self.X['X'].str.len().max()
+    
+    @property
+    def dim_seq(self):
+        return 4
+
+    @property
     def n_readout(self):
         return self.Y.shape[1]
     
     @property
+    def names_readout(self):
+        return [col for col in self.Y.columns]
+    
+    @property
     def n_embed(self):
         return len(self.Z)
+    
+    @property
+    def names_embed(self):
+        return [name for name in self.Z.keys()]
 
     @property
     def n_seqXreadout(self):
@@ -204,7 +237,6 @@ class MPRA_Dataset:
             _Z = torch.cat((_Z, self.Z[name][mask]), dim=1)
 
         return TensorDataset(_X, _Y, _Z)
-        # return TensorDataset(_X, _Y)
 
     def to_DataLoader(
         self,
@@ -223,41 +255,62 @@ class MPRA_Dataset:
 
     # TODO: handle str or list of str for index (only apply index on Y, not X or Z)
     def __getitem__(self, index):
-        # Check if index is a simple type (int, str, slice) or a pandas compatible index (list, Series, Index, array)
-        if isinstance(
-            index, (int, str, slice, list, pd.Series, pd.Index, np.ndarray, torch.Tensor)
-        ):
-            # Normalize torch.Tensor to list
-            if isinstance(index, torch.Tensor):
-                index = index.tolist()
+
+        if isinstance(index, str) or (isinstance(index, list) and all(isinstance(_index, str) for _index in index)):
+            if isinstance(index, str):
+                index = [index]
+            try:
+                _Y = self.Y[index].copy()
+            except KeyError:
+                raise KeyError("Provided index is out of bounds or invalid.")
+            _X = self.X.copy()
+            _obs_X = self.obs_X.copy()
+            _obs_Y = self.obs_Y.copy()
+            _Z = self.Z.copy()
+            return MPRA_Dataset(
+                self.folder, self.name_paper, self.name_dataset, self.info, 
+                X=_X, Y=_Y, obs_X=_obs_X, obs_Y=_obs_Y, Z=_Z, 
+            )
+
+        elif isinstance(index, (int, slice, pd.Series, pd.Index, np.ndarray, torch.Tensor)) \
+            or (isinstance(index, list) and all(isinstance(_index, int) for _index in index)):
+            try:
+                if isinstance(index, int):
+                    _data = self.data.iloc[index].copy()
+                elif isinstance(index, slice):
+                    _data = self.data.iloc[index].copy()
+                elif isinstance(index, list):
+                    _data = self.data.iloc[index].copy()
+                
+                elif isinstance(index, pd.Series):
+                    _data = self.data.loc[index].copy()
+                elif isinstance(index, pd.Index):
+                    _data = self.data.loc[index].copy()
+                    
+                elif isinstance(index, torch.Tensor):
+                    index = index.numpy()
+                elif isinstance(index, np.ndarray):
+                    if index.dtype == bool:
+                        _data = self.data.loc[index].copy()
+                    elif index.dtype == int:
+                        _data = self.data.iloc[index].copy()
+
+                else:
+                    raise TypeError(f"Unsupported index type: {type(index).__name__}")
+                
+            except KeyError:
+                raise KeyError("Provided index is out of bounds or invalid.")
+            _data = _data.reset_index(drop=True)
 
             _Z = dict()
-            if isinstance(index, str) or (isinstance(index, list) and all(isinstance(_index, str) for _index in index)):
-                if isinstance(index, str):
-                    index = [index]
-                index = [f"Y: {_index}" for _index in index]
-                index = index + [_index for _index in self.data.columns if not _index.startswith("Y: ")]
-                try:
-                    _data = self.data[index]
-                except KeyError:
-                    raise KeyError("Provided index is out of bounds or invalid.")
-                _Z = self.Z
-            else:
-                # Using pandas DataFrame indexing directly handles int, str, slice, list of ints, and boolean array
-                try:
-                    _data = self.data.loc[index]
-                except KeyError:
-                    raise KeyError("Provided index is out of bounds or invalid.")
-                _Z = dict()
-                for name in self.Z.keys():
-                    try:
-                        _Z[name] = self.Z[name][index]
-                    except KeyError:
-                        raise KeyError(f"Provided index is out of bounds or invalid for embedding '{name}'.")
-
+            for name in self.Z.keys():
+                if isinstance(index, pd.Series) or isinstance(index, pd.Index):
+                    index = index.to_numpy()
+                _Z[name] = self.Z[name][index]
+                
             # Create a new MPRA_Dataset with the selected data
             return MPRA_Dataset(
-                self.folder, self.name_paper, self.name_dataset, self.info, _data, Z=_Z
+                self.folder, self.name_paper, self.name_dataset, self.info, data=_data, Z=_Z
             )
         else:
             raise TypeError(f"Unsupported index type: {type(index).__name__}")
