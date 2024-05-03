@@ -9,7 +9,9 @@ from torch.utils.data import TensorDataset, DataLoader
 
 from .utils import data_to_XYobs, XYobs_to_data, mkdir, seqs_to_onehot
 
+__SEED__ = 42
 __PATH__ = "/data/tuxm/project/MPRA-collection/data/mpra_test/"
+
 
 
 class MPRA_Dataset:
@@ -25,6 +27,8 @@ class MPRA_Dataset:
         Y=pd.DataFrame(),
         obs_X=pd.DataFrame(),
         obs_Y=pd.DataFrame(),
+        Z=dict(),
+        names_Z=list(),
     ):
         self.folder = folder
         self.name_paper = name_paper
@@ -45,6 +49,20 @@ class MPRA_Dataset:
             raise ValueError(
                 "ONLY ONE of 'data' or 'X' should be provided, but not BOTH."
             )
+        
+        if Z and names_Z:
+            raise ValueError(
+                "ONLY ONE of 'Z' or 'names_Z' should be provided, but not BOTH."
+            )
+        elif Z:
+            for name in Z.keys():
+                assert Z[name].shape[0] == self.n_seq
+            self.Z = Z
+        elif names_Z:
+            self.Z = self.load_Z(names_Z)
+        else:
+            self.Z = dict()
+        
 
     def __len__(self):
         return self.data.shape[0]
@@ -60,6 +78,10 @@ class MPRA_Dataset:
     @property
     def n_readout(self):
         return self.Y.shape[1]
+    
+    @property
+    def n_embed(self):
+        return len(self.Z)
 
     @property
     def n_seqXreadout(self):
@@ -77,11 +99,13 @@ class MPRA_Dataset:
         obs_seq_columns = [col for col in self.obs_X.columns]
         obs_readout_columns = [col for col in self.obs_Y.columns]
         readout_columns = [col for col in self.Y.columns]
+        embed_names = [name for name in self.Z.keys()]
 
         # Displaying observable and readout columns
-        description += "    obs X: '" + "', '".join(obs_seq_columns) + "'\n"
-        description += "    obs Y: '" + "', '".join(obs_readout_columns) + "'\n"
+        description += "    obs seq: '" + "', '".join(obs_seq_columns) + "'\n"
+        description += "    obs readout: '" + "', '".join(obs_readout_columns) + "'\n"
         description += "    readout: '" + "', '".join(readout_columns) + "'\n"
+        description += "    embed: '" + "', '".join(embed_names) + "'\n"
         # Displaying additional information in info
         description += "Additional information:\n"
         for key, value in self.info.items():
@@ -128,9 +152,36 @@ class MPRA_Dataset:
         with open(file + ".yaml", "w") as f:
             yaml.safe_dump(self.info, f)
         self.data.to_csv(file + ".csv", index=False)
+    
+    def load_Z(self, names_Z: list):
+        """Loads embeddings from files and stores them in the Z attribute."""
+
+        if isinstance(names_Z, str):
+            names_Z = [names_Z]
+        for name in names_Z:
+            try:
+                self.Z[name] = torch.load(os.path.join(self.folder, self.name_paper, self.name_dataset, name + '.pt'))
+                assert self.Z[name].shape[0] == self.n_seq
+            except FileNotFoundError as e:
+                raise FileNotFoundError(f"Unable to load embeddings: {e}")
+            except Exception as e:
+                raise Exception(f"An error occurred while loading the embeddings: {e}")
+    
+    def save_Z(self, names_Z: list):
+        """Saves embeddings to files based on the names provided."""
+        mkdir(os.path.join(self.folder, self.name_paper, self.name_dataset))
+        if isinstance(names_Z, str):
+            names_Z = [names_Z]
+        for name in names_Z:
+            try:
+                torch.save(self.Z[name], os.path.join(self.folder, self.name_paper, self.name_dataset, name + '.pt'))
+            except FileNotFoundError as e:
+                raise FileNotFoundError(f"Unable to save embeddings: {e}")
+            except Exception as e:
+                raise Exception(f"An error occurred while saving the embeddings: {e}")
 
     # PyTorch-related
-    def to_Dataset(self, cols_Y: list = []):
+    def to_Dataset(self, cols_Y: list = [], names_Z: list = []):
         cols_Y = (
             cols_Y
             if cols_Y
@@ -147,7 +198,13 @@ class MPRA_Dataset:
             seqs_to_onehot(self.X["X"][mask].values, len_max=len_max)
         ).transpose(1, 2)
         _Y = torch.Tensor(self.Y[cols_Y][mask].values)
-        return TensorDataset(_X, _Y)
+
+        _Z = torch.zeros((_X.shape[0], 0))
+        for name in names_Z:
+            _Z = torch.cat((_Z, self.Z[name][mask]), dim=1)
+
+        return TensorDataset(_X, _Y, _Z)
+        # return TensorDataset(_X, _Y)
 
     def to_DataLoader(
         self,
@@ -164,8 +221,9 @@ class MPRA_Dataset:
             shuffle=shuffle,
         )
 
+    # TODO: handle str or list of str for index (only apply index on Y, not X or Z)
     def __getitem__(self, index):
-        # Check if index is a simple type (int, str, slice) or a pandas compatible index (list, Series, array)
+        # Check if index is a simple type (int, str, slice) or a pandas compatible index (list, Series, Index, array)
         if isinstance(
             index, (int, str, slice, list, pd.Series, pd.Index, np.ndarray, torch.Tensor)
         ):
@@ -173,15 +231,33 @@ class MPRA_Dataset:
             if isinstance(index, torch.Tensor):
                 index = index.tolist()
 
-            # Using pandas DataFrame indexing directly handles int, str, slice, list of ints, and boolean array
-            try:
-                _data = self.data.loc[index]
-            except KeyError:
-                raise KeyError("Provided index is out of bounds or invalid.")
+            _Z = dict()
+            if isinstance(index, str) or (isinstance(index, list) and all(isinstance(_index, str) for _index in index)):
+                if isinstance(index, str):
+                    index = [index]
+                index = [f"Y: {_index}" for _index in index]
+                index = index + [_index for _index in self.data.columns if not _index.startswith("Y: ")]
+                try:
+                    _data = self.data[index]
+                except KeyError:
+                    raise KeyError("Provided index is out of bounds or invalid.")
+                _Z = self.Z
+            else:
+                # Using pandas DataFrame indexing directly handles int, str, slice, list of ints, and boolean array
+                try:
+                    _data = self.data.loc[index]
+                except KeyError:
+                    raise KeyError("Provided index is out of bounds or invalid.")
+                _Z = dict()
+                for name in self.Z.keys():
+                    try:
+                        _Z[name] = self.Z[name][index]
+                    except KeyError:
+                        raise KeyError(f"Provided index is out of bounds or invalid for embedding '{name}'.")
 
             # Create a new MPRA_Dataset with the selected data
             return MPRA_Dataset(
-                self.folder, self.name_paper, self.name_dataset, self.info, _data
+                self.folder, self.name_paper, self.name_dataset, self.info, _data, Z=_Z
             )
         else:
             raise TypeError(f"Unsupported index type: {type(index).__name__}")
@@ -217,3 +293,11 @@ class MPRA_Dataset:
     @obs_readout.setter
     def obs_readout(self, value):
         self.obs_Y = value
+
+    # @property
+    # def embed(self):
+    #     return self.Z
+    
+    # @embed.setter
+    # def embed(self, value):
+    #     self.Z = value

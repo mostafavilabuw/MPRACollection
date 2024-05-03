@@ -1,6 +1,7 @@
 # Local testing files
 __test-*__.py
 __test-*__.ipynb
+lightning_logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
