@@ -1,7 +1,10 @@
 # Local testing files
 __test-*__.py
 __test-*__.ipynb
+__test-*__.sh
 lightning_logs/
+input
+output
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
