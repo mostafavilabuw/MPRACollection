@@ -33,9 +33,6 @@ import MPRACollection
     * - 
       - Native
       - 11,856
-      - 
-      - 
-      - 
     * - .. rowspan:: 4
         Nature-2022-Regev
       - Complex-Train
@@ -51,21 +48,10 @@ import MPRACollection
     * - 
       - Defined-Train
       - 21,037,407
-      - 
-      - 
-      - 
-      - 
     * - 
       - Complex-Test
       - 3,331
-      - 
-      - 
-      - 
-      - 
     * - 
       - Defined-Test
       - 5,327
-      - 
-      - 
-      - 
-      - 
+```
