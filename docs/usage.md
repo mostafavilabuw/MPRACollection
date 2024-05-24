@@ -6,9 +6,8 @@ To use MPRACollection in a project, include the following import statement:
 import MPRACollection
 ```
 
-# Papers and Datasets
+## Papers and Datasets
 
-```{markdown}
 ```{eval-rst}
 .. list-table:: List of Papers and Datasets
     :header-rows: 1
