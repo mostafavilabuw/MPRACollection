@@ -17,9 +17,9 @@ import MPRACollection
      - Dataset
      - # Data Points
      - Regulatory Element
-    - Sequence Source
-    - Cell Context
-    - Readout Technique
+     - Sequence Source
+     - Cell Context
+     - Readout Technique
    * - .. rowspan:: 2
        GenomeResearch_2017_Seelig
      - Random
