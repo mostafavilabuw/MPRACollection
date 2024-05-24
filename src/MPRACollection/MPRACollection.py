@@ -45,7 +45,6 @@ class MPRA_Dataset:
         obs_Y=pd.DataFrame(),
         Z=dict(),
         names_Z=list(),
-        len_max=None,
         _mpra_dataset=None,
     ):
         self.info = info
@@ -75,13 +74,12 @@ class MPRA_Dataset:
         elif names_Z:
             self.Z = self.load_Z(names_Z)
         else:
-            pass # self.Z = dict()
+            self.Z = dict()
         
         # TODO: inherit from _mpra_dataset (type: MPRA_Dataset) when provided
         self.folder = folder
         self.name_paper = name_paper
         self.name_dataset = name_dataset
-        self.len_max = len_max if len_max else self.X["X"].str.len().max()
 
     def __len__(self):
         return self.data.shape[0]
@@ -95,7 +93,7 @@ class MPRA_Dataset:
         return self.X.shape[0]
 
     @property
-    def len_seq(self):
+    def len_max(self):
         return self.X['X'].str.len().max()
     
     @property
@@ -228,7 +226,7 @@ class MPRA_Dataset:
 
         # TODO: should not directly delete the rows with missing values without warning
         mask = self.Y[cols_Y].notna().all(axis=1)
-        len_max = len_max if len_max else self.X["X"][mask].str.len().max()
+        len_max = len_max if len_max else self.len_max
         _X = torch.Tensor(
             seqs_to_onehot(self.X["X"][mask].values, len_max=len_max)
         ).transpose(1, 2)
