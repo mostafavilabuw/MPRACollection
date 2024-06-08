@@ -253,6 +253,7 @@ class MPRA_Dataset:
             shuffle=shuffle,
         )
 
+    # TODO: handle setitem
     # TODO: handle str or list of str for index (only apply index on Y, not X or Z)
     def __getitem__(self, index):
 
